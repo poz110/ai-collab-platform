@@ -1,0 +1,17 @@
+{
+  "name": "ai-collab-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI 驱动的项目看板与任务编排平台（Agent 是一等 assignee）",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "db:migrate": "pnpm -C backend db:migrate",
+    "db:generate": "pnpm -C backend db:generate"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
