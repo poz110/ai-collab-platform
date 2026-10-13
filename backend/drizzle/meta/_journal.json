@@ -8,6 +8,13 @@
       "when": 1791912221124,
       "tag": "0000_nappy_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791919132936,
+      "tag": "0001_sour_rockslide",
+      "breakpoints": true
     }
   ]
 }

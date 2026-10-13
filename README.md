@@ -41,9 +41,18 @@ ai-collab-platform/
 |------|------|------|
 | Stage 1 | 竞品调研与需求分析 | ✅ 完成（docs/research/） |
 | Stage 2 | 产品原型设计 + 技术架构 | ✅ 完成（docs/design/） |
-| Stage 3 | MVP 开发（看板 + AI） | 待启动（DEV-5 / DEV-6） |
+| Stage 3 | MVP 开发（看板 + AI） | 🚧 DEV-5 基础看板已交付（本仓库可运行）；DEV-6 AI 助手待启动 |
 | Stage 4 | 系统集成 | 等待 Stage 3 |
 | Stage 5 | 测试与上线 | 等待 Stage 4 |
+
+## 已实现功能（DEV-5）
+
+- 用户注册/登录（better-auth 邮箱密码），注册自动开通工作区
+- 项目 CRUD + 项目成员邀请（按邮箱）与角色（lead/member/viewer）
+- 任务 CRUD、优先级/标签/截止日期、两级子任务、状态机流转（`done` 仅人类可写）
+- 看板拖拽排序（服务端 position 小数重排）、列表/日历视图、筛选与搜索
+- 任务评论
+- 接口契约：[docs/api-spec.md](docs/api-spec.md)；OpenAPI JSON 由代码生成
 
 ## 技术栈（Stage 2 已确认）
 
@@ -63,16 +72,26 @@ ai-collab-platform/
 前置：Node ≥ 20（或 Bun ≥ 1.2）、pnpm ≥ 9、Docker Desktop。
 
 ```bash
-cp .env.example .env            # 按需填写 ANTHROPIC_API_KEY 等
-docker compose up -d            # PostgreSQL 16 + Redis 7
+docker compose up -d postgres   # PostgreSQL 16（宿主端口 55432，避让本机 5432）
 pnpm install
-pnpm db:generate && pnpm db:migrate   # 数据库迁移（Drizzle Kit）
+pnpm db:migrate                 # 数据库迁移（Drizzle Kit，连 localhost:55432）
 pnpm dev                        # 并行启动 frontend:3000 与 backend:3001
 ```
 
 - 前端：http://localhost:3000
 - 后端健康检查：http://localhost:3001/health
 - OpenAPI 文档：http://localhost:3001/api/v1/openapi.json
+- 后端测试（PGlite 内存库，无需 Docker）：`pnpm -C backend test`
+
+> 注意：本仓库的 `db:migrate` / `pnpm dev` 默认连接 `localhost:55432`。若 shell 中存在外来
+> `DATABASE_URL`（例如平台运行时注入的变量），请显式覆盖：
+> `DATABASE_URL=postgres://postgres:postgres@localhost:55432/ai_collab pnpm db:migrate`
+
+## Docker 一体化部署
+
+```bash
+docker compose up --build       # postgres + backend(自动迁移) + frontend
+```
 
 ## 贡献指南
 

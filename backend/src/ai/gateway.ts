@@ -2,7 +2,7 @@
  * LLM Gateway —— 对应 docs/design/architecture.md §5
  * 统一 chat 接口 + 模型路由 + 成本归集；供应商差异收敛在本模块内。
  */
-import { db } from "../db/index.js";
+import { getDb } from "../db/index.js";
 import { costRecords } from "../db/schema.js";
 
 export interface ChatMessage {
@@ -62,7 +62,7 @@ export async function chat(messages: ChatMessage[], opts: ChatOptions): Promise<
 
 /** 成本归集：每次真实调用后写入（D5 成本透明的基础设施） */
 export async function recordCost(result: ChatResult, runId: string): Promise<void> {
-  await db.insert(costRecords).values({
+  await getDb().insert(costRecords).values({
     runId,
     model: result.model,
     inputTokens: result.inputTokens,

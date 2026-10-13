@@ -1,3 +1,6 @@
+# MVP 一体化部署：PostgreSQL + Redis + backend(Hono) + frontend(Next.js)
+# 使用：docker compose up --build
+# Redis 本期未被运行时代码使用，为 DEV-6/7 的 BullMQ 队列预留（architecture.md §一）
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,7 +9,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_collab
     ports:
-      - "5432:5432"
+      # 避开本机 5432（可能被其他 Postgres 占用）；容器内仍是 5432
+      - "55432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,6 +30,34 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ai_collab
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-acp-dev-secret-change-in-production}
+      WEB_ORIGIN: http://localhost:3000
+      API_PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        API_ORIGIN: http://backend:3001
+    environment:
+      API_ORIGIN: http://backend:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
