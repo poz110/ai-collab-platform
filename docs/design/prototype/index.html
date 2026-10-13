@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Collab Platform — 产品原型 (DEV-4)</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --panel: #ffffff; --border: #e4e4e7; --text: #18181b;
+    --text-2: #52525b; --text-3: #a1a1aa; --accent: #4f46e5; --accent-soft: #eef2ff;
+    --green: #16a34a; --green-soft: #f0fdf4; --amber: #d97706; --amber-soft: #fffbeb;
+    --red: #dc2626; --red-soft: #fef2f2; --purple: #9333ea; --purple-soft: #faf5ff;
+    --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ===== Layout ===== */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 220px; background: #131316; color: #d4d4d8; display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .25s; }
+  .sidebar .logo { padding: 18px 16px; font-weight: 700; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .sidebar .logo .dot { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg,#6366f1,#a855f7); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .nav { padding: 8px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: #a1a1aa; cursor: pointer; margin-bottom: 2px; font-size: 13.5px; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: #1f1f23; color: #e4e4e7; }
+  .nav-item.active { background: #27272a; color: #fff; }
+  .nav-item .icon { width: 18px; text-align: center; }
+  .sidebar .foot { padding: 12px 16px; font-size: 12px; color: #71717a; border-top: 1px solid #27272a; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 14px; flex-shrink: 0; }
+  .topbar h1 { font-size: 15px; font-weight: 600; }
+  .topbar .crumb { color: var(--text-3); font-size: 13px; }
+  .device-toggle { margin-left: auto; display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+  .device-toggle button { border: none; background: none; padding: 5px 12px; border-radius: 6px; font-size: 12.5px; color: var(--text-2); }
+  .device-toggle button.on { background: var(--panel); box-shadow: var(--shadow); color: var(--text); font-weight: 600; }
+  .content { flex: 1; overflow: auto; padding: 20px; }
+  .proto-badge { background: var(--purple-soft); color: var(--purple); font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+
+  /* ===== Kanban ===== */
+  .board { display: flex; gap: 14px; align-items: flex-start; min-height: 100%; }
+  .col { width: 272px; flex-shrink: 0; background: #fbfbfc; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+  .col-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 10px; font-weight: 600; font-size: 13px; }
+  .col-head .count { color: var(--text-3); font-weight: 400; font-size: 12px; }
+  .col-head .pill { width: 8px; height: 8px; border-radius: 50%; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; cursor: grab; box-shadow: var(--shadow); transition: transform .12s, box-shadow .12s; }
+  .card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+  .card.dragging { opacity: .45; cursor: grabbing; }
+  .card .id { font-size: 11.5px; color: var(--text-3); font-weight: 600; letter-spacing: .02em; }
+  .card .title { font-weight: 550; margin: 3px 0 8px; line-height: 1.4; }
+  .card .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; font-weight: 550; }
+  .tag.urgent { background: var(--red-soft); color: var(--red); }
+  .tag.high { background: var(--amber-soft); color: var(--amber); }
+  .tag.medium { background: var(--accent-soft); color: var(--accent); }
+  .tag.low { background: #f4f4f5; color: var(--text-2); }
+  .tag.pr-open { background: var(--green-soft); color: var(--green); }
+  .tag.pr-merged { background: var(--purple-soft); color: var(--purple); }
+  .tag.wakeup { background: #fdf4ff; color: #c026d3; }
+  .tag.stage { background: #ecfeff; color: #0e7490; }
+  .avatar { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; }
+  .avatar.human { background: #0ea5e9; }
+  .avatar.agent { background: linear-gradient(135deg,#6366f1,#a855f7); }
+  .assignee { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-2); }
+  .agent-run { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .progress { height: 4px; background: #f0f0f2; border-radius: 99px; overflow: hidden; }
+  .progress > i { display: block; height: 100%; background: linear-gradient(90deg,#6366f1,#a855f7); border-radius: 99px; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+  .run-meta { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-3); margin-top: 4px; }
+  .cost { color: var(--purple); font-weight: 600; }
+  .auto-move { font-size: 10.5px; color: var(--green); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .col.dropover { outline: 2px dashed var(--accent); outline-offset: -2px; }
+
+  /* ===== Detail drawer ===== */
+  .overlay { position: fixed; inset: 0; background: rgba(9,9,11,.4); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: -640px; width: 620px; max-width: 96vw; height: 100vh; background: var(--panel); box-shadow: -8px 0 30px rgba(0,0,0,.12); transition: right .25s ease; z-index: 50; display: flex; flex-direction: column; }
+  .drawer.show { right: 0; }
+  .drawer-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .drawer-head .close { margin-left: auto; border: none; background: var(--bg); width: 28px; height: 28px; border-radius: 8px; font-size: 14px; color: var(--text-2); }
+  .drawer-body { flex: 1; overflow: auto; padding: 20px; }
+  .field-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .btn { border: 1px solid var(--border); background: var(--panel); padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 550; color: var(--text); transition: all .15s; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #4338ca; }
+  .btn.ai { background: linear-gradient(135deg,#6366f1,#a855f7); border: none; color: #fff; }
+  .btn.ai:hover { opacity: .9; }
+  .btn.done-btn { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .section { margin-top: 22px; }
+  .section h3 { font-size: 13px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
+  .desc { background: var(--bg); border-radius: 8px; padding: 12px; line-height: 1.6; color: var(--text-2); }
+  .subtask { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; background: var(--panel); animation: slideIn .3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  .subtask .st-title { flex: 1; font-weight: 500; }
+  .subtask input.st-title { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+  .subtask .del { border: none; background: none; color: var(--text-3); font-size: 15px; }
+  .subtask .del:hover { color: var(--red); }
+  .stream-note { font-size: 12px; color: var(--purple); margin-bottom: 8px; display: none; }
+  .stream-note.on { display: flex; align-items: center; gap: 6px; }
+  .stream-note::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--purple); animation: pulse 1s infinite; }
+  .wakeup-rule { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 9px 12px; background: #fdf4ff; border-radius: 8px; color: #86198f; margin-bottom: 6px; }
+  .comment { display: flex; gap: 10px; margin-bottom: 14px; }
+  .comment .body { flex: 1; }
+  .comment .who { font-size: 12.5px; font-weight: 600; margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+  .comment .who time { color: var(--text-3); font-weight: 400; font-size: 11.5px; }
+  .comment .text { font-size: 13px; line-height: 1.55; color: var(--text-2); background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .comment.agent-c .text { background: var(--purple-soft); }
+  .role-hint { font-size: 11.5px; color: var(--text-3); }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #18181b; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; transition: transform .3s; z-index: 99; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ===== AI Panel ===== */
+  .ai-wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .ai-hero { background: linear-gradient(135deg,#eef2ff,#faf5ff); border: 1px solid #e0e7ff; border-radius: 14px; padding: 22px; }
+  .ai-hero h2 { font-size: 17px; margin-bottom: 6px; }
+  .ai-hero p { color: var(--text-2); font-size: 13px; margin-bottom: 14px; }
+  .ai-input { display: flex; gap: 8px; }
+  .ai-input input { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 14px; background: #fff; }
+  .ai-input input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .ai-draft { background: #fff; border: 1px solid #e0e7ff; border-radius: 12px; padding: 16px; display: none; }
+  .ai-draft.show { display: block; animation: slideIn .3s; }
+  .ai-draft .row { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+  .ai-draft .row:last-child { border-bottom: none; }
+  .ai-draft .k { width: 76px; color: var(--text-3); flex-shrink: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .panel h3 { font-size: 13.5px; font-weight: 650; margin-bottom: 10px; }
+  .insight { font-size: 13px; line-height: 1.7; color: var(--text-2); }
+  .insight b { color: var(--text); }
+  .insight .risk { color: var(--red); font-weight: 600; }
+  .insight .ok { color: var(--green); font-weight: 600; }
+  .cost-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+  .cost-row:last-child { border: none; }
+  .cost-row .v { font-weight: 600; color: var(--purple); }
+
+  /* ===== Integrations ===== */
+  .int-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; max-width: 1000px; }
+  .int-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .int-card .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .int-card .head .ic { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; background: var(--bg); }
+  .int-card .head b { font-size: 14.5px; }
+  .int-card .desc { font-size: 12.5px; color: var(--text-2); line-height: 1.55; margin-bottom: 12px; }
+  .status-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+  .status-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .status-dot.ok { color: var(--green); } .status-dot.ok::before { background: var(--green); }
+  .status-dot.soon { color: var(--text-3); } .status-dot.soon::before { background: var(--text-3); }
+  .repo-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; background: var(--bg); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  .repo-row code { font-size: 11.5px; color: var(--text-2); }
+  .wh { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+
+  /* ===== Mobile ===== */
+  .app.mobile .sidebar { display: none; }
+  .app.mobile .content { padding: 12px; }
+  .app.mobile .board { overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+  .app.mobile .col { width: 84vw; scroll-snap-align: start; }
+  .app.mobile .grid2 { grid-template-columns: 1fr; }
+  .app.mobile .drawer { width: 100vw; max-width: 100vw; }
+  .app.mobile .main { max-width: 430px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .mobile-tabbar { display: none; }
+  .app.mobile .mobile-tabbar { display: flex; background: var(--panel); border-top: 1px solid var(--border); }
+  .mobile-tabbar button { flex: 1; border: none; background: none; padding: 10px 0; font-size: 12px; color: var(--text-3); }
+  .mobile-tabbar button.on { color: var(--accent); font-weight: 650; }
+  .hint { max-width: 1000px; margin: 0 0 14px; font-size: 12.5px; color: var(--text-3); }
+  .hint b { color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo"><span class="dot">✦</span> AI Collab</div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="board"><span class="icon">▦</span> 项目看板</button>
+      <button class="nav-item" data-view="ai"><span class="icon">✦</span> AI 助手</button>
+      <button class="nav-item" data-view="integrations"><span class="icon">⬡</span> 集成设置</button>
+      <button class="nav-item" disabled style="opacity:.4"><span class="icon">◷</span> 迭代（后续版本）</button>
+      <button class="nav-item" disabled style="opacity:.4"><span class="icon">⚙</span> 项目设置</button>
+    </nav>
+    <div class="foot">ACP 项目 · Stage 2 原型<br>DEV-4 交付物</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <h1 id="page-title">项目看板</h1>
+      <span class="crumb">ACP / Sprint 3</span>
+      <span class="proto-badge">原型 v1</span>
+      <div class="device-toggle">
+        <button id="dev-desktop" class="on">🖥 桌面</button>
+        <button id="dev-mobile">📱 手机</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- ============ BOARD ============ -->
+      <section id="view-board">
+        <p class="hint">💡 <b>试试：</b>拖拽卡片到「待验收」；点击卡片 <b>ACP-21</b> 看 AI 拆分演示；注意 Agent 卡片上的进度条与成本标签（差异化 D1 / D5）。</p>
+        <div class="board" id="board"></div>
+      </section>
+
+      <!-- ============ AI ASSISTANT ============ -->
+      <section id="view-ai" style="display:none">
+        <div class="ai-wrap">
+          <div class="ai-hero">
+            <h2>✦ 用一句话创建任务</h2>
+            <p>AI 自动识别任务类型、优先级与截止日期，生成结构化草稿，确认后落入看板。</p>
+            <div class="ai-input">
+              <input id="ai-input" value="下周五前完成登录页的验证码支持，比较急" placeholder="例如：下周五前完成登录页的验证码支持，比较急">
+              <button class="btn ai" id="ai-create">生成任务草稿</button>
+            </div>
+            <div class="ai-draft" id="ai-draft">
+              <div class="row"><span class="k">标题</span><b>登录页验证码支持</b></div>
+              <div class="row"><span class="k">类型</span><span class="tag medium">功能开发</span></div>
+              <div class="row"><span class="k">优先级</span><span class="tag urgent">紧急</span><span style="font-size:12px;color:var(--text-3)">（识别自「比较急」）</span></div>
+              <div class="row"><span class="k">截止日期</span>2026-10-16（周五）</div>
+              <div class="row"><span class="k">建议执行者</span>
+                <span class="assignee"><span class="avatar agent">A</span> claude-code <span class="role-hint">· 前端类任务历史交付率 94%</span></span>
+              </div>
+              <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn primary" onclick="toast('✅ 任务已创建，落入「待办」列（原型演示）')">确认创建</button>
+                <button class="btn" onclick="toast('已转为手动编辑模式')">手动编辑</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="panel">
+              <h3>📊 进度洞察（自动生成）</h3>
+              <div class="insight">
+                Sprint 3 已完成 <b>6/14</b> 任务。<br>
+                <span class="risk">⚠ 风险：</span><b>ACP-18</b>「webhook 重试队列」已阻塞 2 天，依赖 Redis 部署，预计影响里程碑 M2。<br>
+                <span class="ok">✓ 亮点：</span>Agent 本周交付 4 个任务，平均验收一次通过率 <b>75%</b>。<br>
+                💡 建议：将 ACP-18 的依赖拆分为独立子任务并标记 stage=1 优先处理。
+              </div>
+            </div>
+            <div class="panel">
+              <h3>💰 Agent 成本归集（本周）</h3>
+              <div class="cost-row"><span>claude-sonnet · 任务拆分 ×12</span><span class="v">$1.84</span></div>
+              <div class="cost-row"><span>claude-sonnet · 编码执行 ×4</span><span class="v">$6.21</span></div>
+              <div class="cost-row"><span>claude-opus · 架构建议 ×1</span><span class="v">$0.97</span></div>
+              <div class="cost-row"><span><b>合计</b>（41.2 万 tokens）</span><span class="v">$9.02</span></div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:8px">明码标价按 issue 归集 —— 对标竞品黑盒点数制（差异化 D5）</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INTEGRATIONS ============ -->
+      <section id="view-integrations" style="display:none">
+        <p class="hint">M4（GitHub 状态联动）是 MVP 范围；Slack / 飞书 / 内部系统为 Stage 4 预留（DEV-7~9）。</p>
+        <div class="int-grid">
+          <div class="int-card">
+            <div class="head"><span class="ic">🐙</span><b>GitHub</b><span style="margin-left:auto" class="status-dot ok">已连接</span></div>
+            <div class="desc">仓库绑定、PR 状态自动回写看板、commit 关联 Issue（如 <code>fix ACP-21</code>）、PR merged → 自动流转到「待验收」。</div>
+            <div class="repo-row">📦 <code>poz110/ai-collab-platform</code><span class="tag pr-open" style="margin-left:auto">3 open PRs</span></div>
+            <div class="repo-row">📦 <code>poz110/ai-collab-docs</code><span class="tag pr-merged" style="margin-left:auto">同步正常</span></div>
+            <div class="wh">Webhook: <code>/webhooks/github</code> · 验签 ✓ · 最近事件 2 分钟前 · 重试队列 0 积压</div>
+          </div>
+          <div class="int-card">
+            <div class="head"><span class="ic">💬</span><b>Slack</b><span style="margin-left:auto" class="status-dot soon">Stage 4</span></div>
+            <div class="desc">任务分配/状态变更通知、<code>/task</code> 指令建任务、进度日报推送。</div>
+            <button class="btn" disabled>连接 Slack（DEV-8）</button>
+          </div>
+          <div class="int-card">
+            <div class="head"><span class="ic">🕊</span><b>飞书</b><span style="margin-left:auto" class="status-dot soon">Stage 4</span></div>
+            <div class="desc">国内团队优先：消息卡片、审批流、群机器人通知（DEV-3 结论：飞书优先于 Slack）。</div>
+            <button class="btn" disabled>连接飞书（DEV-8）</button>
+          </div>
+          <div class="int-card">
+            <div class="head"><span class="ic">🏢</span><b>内部系统 / SSO</b><span style="margin-left:auto" class="status-dot soon">Stage 4</span></div>
+            <div class="desc">企业微信/钉钉扫码登录、组织架构同步、工单转任务、开放 Webhook 与插件框架。</div>
+            <button class="btn" disabled>配置 SSO（DEV-9）</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Mobile tabbar -->
+    <nav class="mobile-tabbar">
+      <button class="on" data-view="board">▦ 看板</button>
+      <button data-view="ai">✦ 助手</button>
+      <button data-view="integrations">⬡ 集成</button>
+    </nav>
+  </div>
+</div>
+
+<!-- ============ ISSUE DETAIL DRAWER ============ -->
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <span class="id" id="d-id" style="font-weight:700;color:var(--text-3)">ACP-21</span>
+    <span class="tag high">高</span>
+    <span class="tag stage">stage 2</span>
+    <button class="close" id="d-close">✕</button>
+  </div>
+  <div class="drawer-body">
+    <h2 id="d-title" style="font-size:18px;margin-bottom:12px">实现 Issue 的 AI 拆分功能</h2>
+    <div class="field-row">
+      <span class="assignee"><span class="avatar human">林</span> 林晓（验收人）</span>
+      <span class="role-hint">执行者：</span>
+      <span class="assignee"><span class="avatar agent">A</span> claude-code</span>
+      <span class="role-hint">· 截止 10-20 · 累计成本 <span class="cost">12.4k tok · $0.18</span></span>
+    </div>
+    <div class="field-row">
+      <button class="btn" onclick="toast('状态流转：进行中 → 待验收（Agent 最高到此级）')">流转到「待验收」</button>
+      <button class="btn done-btn" onclick="toast('✅ 已验收完成（done 为人类专属动作）')">验收完成 ✓</button>
+      <span class="role-hint">Agent 视角不渲染「验收完成」—— D1 信任边界</span>
+    </div>
+
+    <div class="section">
+      <h3>描述</h3>
+      <div class="desc">用户用自然语言描述需求后，AI 将其拆分为可执行的子任务树，识别依赖关系并给出 stage 分组与执行顺序建议。拆分结果以草稿形式呈现，人工确认后才创建真实子任务。</div>
+    </div>
+
+    <div class="section">
+      <h3>AI 拆分</h3>
+      <button class="btn ai" id="btn-split">✦ AI 拆分此任务</button>
+      <div id="split-area" style="margin-top:12px; display:none">
+        <div class="stream-note" id="stream-note">AI 正在生成拆分草稿…</div>
+        <div id="subtasks"></div>
+        <div class="field-row" id="split-actions" style="display:none; margin-top:10px">
+          <button class="btn primary" onclick="confirmSplit()">确认拆分（创建 4 个子任务）</button>
+          <button class="btn" onclick="toast('草稿已放弃，不产生任何数据变更')">放弃草稿</button>
+          <span class="role-hint">确认前不落库 —— 草稿生成器定位</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>唤醒规则（wakeup）</h3>
+      <div class="wakeup-rule">⏰ 当 <b>PR #47 checks 全部通过</b> 时唤醒 Agent 继续执行 <span class="role-hint" style="margin-left:auto">已挂起 · 防抖 30s</span></div>
+      <div class="wakeup-rule">👤 当 <b>林晓</b> 回复本任务时通知我</div>
+    </div>
+
+    <div class="section">
+      <h3>关联</h3>
+      <div class="repo-row">🔀 <code>PR #47 feat/ai-split</code> <span class="tag pr-open" style="margin-left:auto">open · checks 2/3</span></div>
+      <div class="repo-row">⎇ <code>agent/claude/acp-21</code> <span class="role-hint" style="margin-left:auto">由任务标题自动建议命名</span></div>
+    </div>
+
+    <div class="section">
+      <h3>评论</h3>
+      <div class="comment agent-c">
+        <span class="avatar agent">A</span>
+        <div class="body">
+          <div class="who">claude-code <span class="tag medium" style="font-size:10px">AGENT</span> <time>10 分钟前</time></div>
+          <div class="text">拆分草稿已生成完毕，等待人工确认。建议 stage 1 先处理「Schema 定义」，其余三项可并行。当前 run 已挂起，等待 PR checks 唤醒条件。</div>
+        </div>
+      </div>
+      <div class="comment">
+        <span class="avatar human">林</span>
+        <div class="body">
+          <div class="who">林晓 <time>3 分钟前</time></div>
+          <div class="text">「API 端点」和「流式推送」顺序换一下，前端依赖推送协议先定。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据 ================= */
+const COLUMNS = [
+  { key: "todo",        name: "待办",   color: "#a1a1aa" },
+  { key: "in_progress", name: "进行中", color: "#d97706" },
+  { key: "in_review",   name: "待验收", color: "#4f46e5" },
+  { key: "done",        name: "已完成", color: "#16a34a" },
+];
+const ISSUES = [
+  { id:"ACP-24", title:"看板拖拽 position 小数重排", status:"todo", pri:"high", who:{t:"human",n:"林晓"}, tags:[["stage","stage 3"]] },
+  { id:"ACP-25", title:"评论线程 API + SSE 广播", status:"todo", pri:"medium", who:{t:"agent",n:"claude-code"}, tags:[["wakeup","⏰ 子任务完成时推进"]] },
+  { id:"ACP-21", title:"实现 Issue 的 AI 拆分功能", status:"in_progress", pri:"high", who:{t:"agent",n:"claude-code"},
+    tags:[["pr-open","PR #47 · checks 2/3"],["stage","stage 2"]], run:{pct:64, cost:"12.4k tok · $0.18", note:"已挂起 · 等待 PR checks"} },
+  { id:"ACP-18", title:"webhook 重试队列（BullMQ）", status:"in_progress", pri:"urgent", who:{t:"human",n:"陈默"}, tags:[["stage","stage 1"]], blocked:true },
+  { id:"ACP-14", title:"GitHub PR merged → 自动流转", status:"in_review", pri:"high", who:{t:"agent",n:"claude-code"},
+    tags:[["pr-merged","PR #39 merged"]], auto:"🤖 PR 合并触发自动流转（D2）" },
+  { id:"ACP-15", title:"看板视图端点 + cursor 分页", status:"in_review", pri:"medium", who:{t:"human",n:"林晓"}, tags:[] },
+  { id:"ACP-9",  title:"数据模型迁移（Drizzle）", status:"done", pri:"medium", who:{t:"agent",n:"claude-code"}, tags:[["pr-merged","PR #31 merged"]] },
+  { id:"ACP-7",  title:"better-auth 登录 + GitHub OAuth", status:"done", pri:"high", who:{t:"human",n:"陈默"}, tags:[] },
+];
+
+/* ================= 看板渲染 ================= */
+const board = document.getElementById("board");
+function render() {
+  board.innerHTML = "";
+  for (const col of COLUMNS) {
+    const items = ISSUES.filter(i => i.status === col.key);
+    const el = document.createElement("div");
+    el.className = "col"; el.dataset.status = col.key;
+    el.innerHTML = `<div class="col-head"><span class="pill" style="background:${col.color}"></span>${col.name}<span class="count">${items.length}</span></div>`;
+    for (const it of items) el.appendChild(cardEl(it));
+    el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("dropover"); });
+    el.addEventListener("dragleave", () => el.classList.remove("dropover"));
+    el.addEventListener("drop", e => {
+      e.preventDefault(); el.classList.remove("dropover");
+      const id = e.dataTransfer.getData("text/plain");
+      const it = ISSUES.find(x => x.id === id);
+      if (it && it.status !== col.key) {
+        it.status = col.key; render();
+        toast(`${id} → 「${col.name}」${col.key==="done" ? "（原型允许拖拽演示；实际 done 需人工验收动作）" : ""}`);
+      }
+    });
+    board.appendChild(el);
+  }
+}
+function cardEl(it) {
+  const c = document.createElement("div");
+  c.className = "card"; c.draggable = true;
+  const av = it.who.t === "agent"
+    ? `<span class="assignee"><span class="avatar agent">A</span>${it.who.n}</span>`
+    : `<span class="assignee"><span class="avatar human">${it.who.n[0]}</span>${it.who.n}</span>`;
+  c.innerHTML = `
+    <div class="id">${it.id}${it.blocked ? ' · <span style="color:var(--red)">已阻塞</span>' : ""}</div>
+    <div class="title">${it.title}</div>
+    <div class="meta">
+      <span class="tag ${it.pri==="urgent"?"urgent":it.pri==="high"?"high":it.pri==="medium"?"medium":"low"}">${{urgent:"紧急",high:"高",medium:"中",low:"低"}[it.pri]}</span>
+      ${it.tags.map(t => `<span class="tag ${t[0]}">${t[1]}</span>`).join("")}
+      <span style="margin-left:auto">${av}</span>
+    </div>
+    ${it.run ? `<div class="agent-run">
+      <div class="progress"><i style="width:${it.run.pct}%"></i></div>
+      <div class="run-meta"><span>Agent 执行中 · ${it.run.pct}% · ${it.run.note}</span><span class="cost">${it.run.cost}</span></div>
+    </div>` : ""}
+    ${it.auto ? `<div class="auto-move">${it.auto}</div>` : ""}`;
+  c.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", it.id); c.classList.add("dragging"); });
+  c.addEventListener("dragend", () => c.classList.remove("dragging"));
+  c.addEventListener("click", () => openDrawer(it));
+  return c;
+}
+
+/* ================= 详情抽屉 ================= */
+const drawer = document.getElementById("drawer"), overlay = document.getElementById("overlay");
+function openDrawer(it) {
+  document.getElementById("d-id").textContent = it.id;
+  document.getElementById("d-title").textContent = it.title;
+  drawer.classList.add("show"); overlay.classList.add("show");
+}
+function closeDrawer() { drawer.classList.remove("show"); overlay.classList.remove("show"); }
+overlay.addEventListener("click", closeDrawer);
+document.getElementById("d-close").addEventListener("click", closeDrawer);
+
+/* ================= AI 拆分模拟（流式） ================= */
+const SUBTASKS = [
+  { t: "定义拆分结果 JSON Schema（版本化）", stage: 1 },
+  { t: "SSE 流式推送协议：draft_token 事件", stage: 1 },
+  { t: "POST /issues/:id/ai/split 端点 + 队列", stage: 2 },
+  { t: "拆分确认 → 批量创建子任务（事务）", stage: 2 },
+];
+let splitting = false;
+document.getElementById("btn-split").addEventListener("click", () => {
+  if (splitting) return; splitting = true;
+  const area = document.getElementById("split-area"), list = document.getElementById("subtasks");
+  const note = document.getElementById("stream-note"), actions = document.getElementById("split-actions");
+  area.style.display = "block"; list.innerHTML = ""; actions.style.display = "none"; note.classList.add("on");
+  let i = 0;
+  (function next() {
+    if (i >= SUBTASKS.length) {
+      note.classList.remove("on"); actions.style.display = "flex";
+      actions.querySelector(".btn.primary").textContent = `确认拆分（创建 ${list.children.length} 个子任务）`;
+      splitting = false; return;
+    }
+    const s = SUBTASKS[i++];
+    const row = document.createElement("div");
+    row.className = "subtask";
+    row.innerHTML = `<span class="tag stage">stage ${s.stage}</span><input class="st-title" value="${s.t}"><button class="del" title="删除">✕</button>`;
+    row.querySelector(".del").addEventListener("click", () => { row.remove(); });
+    list.appendChild(row);
+    setTimeout(next, 650);
+  })();
+});
+function confirmSplit() {
+  const n = document.getElementById("subtasks").children.length;
+  toast(`✅ 已创建 ${n} 个子任务（parent=ACP-21，按 stage 分组）—— 确认后才落库（D4）`);
+  closeDrawer();
+}
+
+/* ================= AI 建任务 ================= */
+document.getElementById("ai-create").addEventListener("click", () => {
+  document.getElementById("ai-draft").classList.add("show");
+});
+
+/* ================= 视图切换 ================= */
+const TITLES = { board: "项目看板", ai: "AI 助手", integrations: "集成设置" };
+function switchView(v) {
+  for (const k of Object.keys(TITLES)) document.getElementById("view-" + k).style.display = k === v ? "" : "none";
+  document.getElementById("page-title").textContent = TITLES[v];
+  document.querySelectorAll(".nav-item[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  document.querySelectorAll(".mobile-tabbar button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+}
+document.querySelectorAll(".nav-item[data-view], .mobile-tabbar button").forEach(b =>
+  b.addEventListener("click", () => switchView(b.dataset.view)));
+
+/* ================= 视口切换 ================= */
+document.getElementById("dev-desktop").addEventListener("click", e => setDevice(false, e.target));
+document.getElementById("dev-mobile").addEventListener("click", e => setDevice(true, e.target));
+function setDevice(mobile, btn) {
+  document.getElementById("app").classList.toggle("mobile", mobile);
+  document.querySelectorAll(".device-toggle button").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  if (mobile) toast("移动端形态：底部 Tab + 看板横向滑动（响应式 + PWA 方案）");
+}
+
+/* ================= Toast ================= */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+render();
+</script>
+</body>
+</html>
