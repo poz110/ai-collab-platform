@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* 设计 Token 将在 DEV-5 随 shadcn/ui 主题落地（见 docs/design/prototype/README.md §五） */
+:root {
+  color-scheme: light;
+}
